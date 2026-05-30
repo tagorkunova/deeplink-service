@@ -1,0 +1,97 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: deeplink-postgres
+    environment:
+      POSTGRES_DB: deeplink_db
+      POSTGRES_USER: deeplink_user
+      POSTGRES_PASSWORD: deeplink_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deeplink_user -d deeplink_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  deeplink-api:
+    build: ./deeplink-api
+    container_name: deeplink-api
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://deeplink_user:deeplink_pass@postgres:5432/deeplink_db
+      TRACKING_SERVICE_URL: http://tracking-service:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  tracking-service:
+    build: ./tracking-service
+    container_name: tracking-service
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgresql://deeplink_user:deeplink_pass@postgres:5432/deeplink_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  expiration-worker:
+    build: ./expiration-worker
+    container_name: expiration-worker
+    environment:
+      DATABASE_URL: postgresql://deeplink_user:deeplink_pass@postgres:5432/deeplink_db
+      CHECK_INTERVAL_SECONDS: 60
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: deeplink-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - deeplink-api
+
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: deeplink-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+  logstash:
+    image: logstash:8.12.0
+    container_name: deeplink-logstash
+    ports:
+      - "5044:5044"
+    volumes:
+      - ./elk/logstash/pipeline.conf:/usr/share/logstash/pipeline/logstash.conf
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: kibana:8.12.0
+    container_name: deeplink-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+
+volumes:
+  postgres_data:
+  elasticsearch_data:
