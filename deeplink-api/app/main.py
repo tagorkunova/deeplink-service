@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.api.deeplinks import router as deeplinks_router
+from app.api.redirect import router as redirect_router
 from app.core.logger import setup_logger
 
 logger = setup_logger("deeplink-api")
@@ -30,6 +31,7 @@ app.add_middleware(
 )
 
 app.include_router(deeplinks_router, prefix="/api/deeplinks", tags=["deeplinks"])
+app.include_router(redirect_router, tags=["redirect"])
 
 
 @app.get("/health")
