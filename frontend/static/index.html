@@ -2,13 +2,201 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DeepLink Manager</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f7f8fa; color: #1a1a2e; }
+    header { background: #1a1a2e; color: white; padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
+    header h1 { font-size: 1.25rem; font-weight: 600; }
+    .badge { background: #4f46e5; color: white; font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+    main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    .card { background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #374151; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: 13px; color: #6b7280; font-weight: 500; }
+    input, textarea { border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 14px; outline: none; transition: border-color 0.15s; font-family: inherit; }
+    input:focus, textarea:focus { border-color: #4f46e5; }
+    textarea { resize: vertical; min-height: 80px; }
+    button { background: #4f46e5; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-size: 14px; cursor: pointer; font-weight: 500; transition: background 0.15s; }
+    button:hover { background: #4338ca; }
+    button.secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+    button.secondary:hover { background: #e5e7eb; }
+    button.danger { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
+    button.danger:hover { background: #fecaca; }
+    .links-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .links-table th { text-align: left; padding: 10px 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .links-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    .links-table tr:last-child td { border-bottom: none; }
+    .status { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+    .status.active { background: #dcfce7; color: #166534; }
+    .status.expired { background: #fee2e2; color: #991b1b; }
+    .status.disabled { background: #f3f4f6; color: #6b7280; }
+    .short-url { font-family: monospace; color: #4f46e5; text-decoration: none; font-size: 13px; }
+    .short-url:hover { text-decoration: underline; }
+    .payload-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; color: #6b7280; }
+    .actions { display: flex; gap: 6px; }
+    .empty { text-align: center; padding: 2rem; color: #9ca3af; }
+    .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #1a1a2e; color: white; padding: 12px 20px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; }
+    .toast.show { opacity: 1; }
+    .clicks { font-weight: 600; color: #4f46e5; }
+  </style>
 </head>
 <body>
-  <h1>DeepLink Manager</h1>
-  <p>TODO: реализовать интерфейс управления deeplink-ссылками</p>
-  <!-- TODO: форма создания deeplink -->
-  <!-- TODO: список созданных ссылок с кнопками "Открыть" и "Деактивировать" -->
-  <!-- TODO: отображение payload, статуса, счётчика переходов -->
+  <header>
+    <h1>🔗 DeepLink Manager</h1>
+    <span class="badge">v1.0</span>
+  </header>
+  <main>
+    <div class="card">
+      <h2>Создать новый deeplink</h2>
+      <div class="form-row">
+        <div class="form-group full">
+          <label>Target URL *</label>
+          <input type="url" id="targetUrl" placeholder="https://example.com/promo" />
+        </div>
+        <div class="form-group">
+          <label>Время жизни (секунды)</label>
+          <input type="number" id="ttlSeconds" value="3600" min="1" />
+        </div>
+        <div class="form-group">
+          <label>userId</label>
+          <input type="text" id="userId" placeholder="123" />
+        </div>
+        <div class="form-group">
+          <label>campaign</label>
+          <input type="text" id="campaign" placeholder="spring-sale" />
+        </div>
+        <div class="form-group">
+          <label>source</label>
+          <input type="text" id="source" placeholder="email" />
+        </div>
+      </div>
+      <button onclick="createDeeplink()">Создать ссылку</button>
+    </div>
+
+    <div class="card">
+      <h2>Созданные ссылки</h2>
+      <div id="links-container">
+        <div class="empty">Загрузка...</div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const API = 'http://localhost:8080';
+
+    async function createDeeplink() {
+      const targetUrl = document.getElementById('targetUrl').value.trim();
+      if (!targetUrl) { showToast('Укажите Target URL'); return; }
+
+      const payload = {};
+      const userId = document.getElementById('userId').value.trim();
+      const campaign = document.getElementById('campaign').value.trim();
+      const source = document.getElementById('source').value.trim();
+      if (userId) payload.userId = userId;
+      if (campaign) payload.campaign = campaign;
+      if (source) payload.source = source;
+
+      try {
+        const res = await fetch(`${API}/api/deeplinks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            targetUrl,
+            ttlSeconds: parseInt(document.getElementById('ttlSeconds').value) || 3600,
+            payload,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          showToast('Ошибка: ' + (err.detail || res.statusText));
+          return;
+        }
+        showToast('Ссылка создана!');
+        document.getElementById('targetUrl').value = '';
+        loadLinks();
+      } catch (e) {
+        showToast('Ошибка подключения к API');
+      }
+    }
+
+    async function loadLinks() {
+      try {
+        const res = await fetch(`${API}/api/deeplinks`);
+        const data = await res.json();
+        renderLinks(data.items || []);
+      } catch (e) {
+        document.getElementById('links-container').innerHTML = '<div class="empty">Не удалось загрузить ссылки</div>';
+      }
+    }
+
+    function renderLinks(links) {
+      const container = document.getElementById('links-container');
+      if (!links.length) {
+        container.innerHTML = '<div class="empty">Ссылок пока нет</div>';
+        return;
+      }
+      const now = new Date();
+      container.innerHTML = `
+        <table class="links-table">
+          <thead>
+            <tr>
+              <th>Короткая ссылка</th>
+              <th>Target URL</th>
+              <th>Payload</th>
+              <th>Статус</th>
+              <th>Кликов</th>
+              <th>Истекает</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${links.map(link => {
+              const expired = new Date(link.expiresAt) < now;
+              const status = !link.active ? 'disabled' : expired ? 'expired' : 'active';
+              const statusLabel = status === 'active' ? 'активна' : status === 'expired' ? 'истекла' : 'отключена';
+              const expires = new Date(link.expiresAt).toLocaleString('ru-RU');
+              return `
+                <tr>
+                  <td><a class="short-url" href="${link.shortUrl}" target="_blank">/d/${link.code}</a></td>
+                  <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${link.targetUrl}">${link.targetUrl}</td>
+                  <td><div class="payload-cell" title="${JSON.stringify(link.payload)}">${JSON.stringify(link.payload)}</div></td>
+                  <td><span class="status ${status}">${statusLabel}</span></td>
+                  <td><span class="clicks">${link.clickCount}</span></td>
+                  <td style="font-size:12px;color:#6b7280">${expires}</td>
+                  <td>
+                    <div class="actions">
+                      <button class="secondary" style="padding:4px 10px;font-size:12px" onclick="window.open('${link.shortUrl}','_blank')">Открыть</button>
+                      <button class="danger" style="padding:4px 10px;font-size:12px" onclick="deleteLink('${link.id}')">✕</button>
+                    </div>
+                  </td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    async function deleteLink(id) {
+      if (!confirm('Деактивировать ссылку?')) return;
+      await fetch(`${API}/api/deeplinks/${id}`, { method: 'DELETE' });
+      showToast('Ссылка деактивирована');
+      loadLinks();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    loadLinks();
+    setInterval(loadLinks, 10000);
+  </script>
 </body>
 </html>
