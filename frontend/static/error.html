@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ошибка — DeepLink</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f7f8fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid #e5e7eb;
+      padding: 3rem 2.5rem;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+    .icon { font-size: 56px; margin-bottom: 1.5rem; }
+    .code {
+      font-size: 13px;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.75rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 0.75rem;
+    }
+    p {
+      color: #6b7280;
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    .btn {
+      display: inline-block;
+      background: #1a1a2e;
+      color: white;
+      text-decoration: none;
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #2d2d4e; }
+    .divider {
+      border: none;
+      border-top: 1px solid #f3f4f6;
+      margin: 2rem 0;
+    }
+    .hint {
+      font-size: 13px;
+      color: #9ca3af;
+    }
+
+    /* Варианты по типу ошибки — управляются через URL параметр ?type= */
+    .error-expired .icon::before { content: "⏰"; }
+    .error-expired h1 { color: #d97706; }
+    .error-notfound .icon::before { content: "🔍"; }
+    .error-notfound h1 { color: #6b7280; }
+    .error-disabled .icon::before { content: "🚫"; }
+    .error-disabled h1 { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="container" id="container">
+    <div class="icon" id="icon"></div>
+    <div class="code" id="error-code"></div>
+    <h1 id="title"></h1>
+    <p id="message"></p>
+    <a href="/" class="btn">← Вернуться на главную</a>
+    <hr class="divider">
+    <p class="hint" id="hint"></p>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const type = params.get("type") || "notfound";
+
+    const errors = {
+      expired: {
+        icon: "⏰",
+        code: "410 Gone",
+        title: "Ссылка истекла",
+        message: "Срок действия этой ссылки истёк. Попросите отправителя создать новую.",
+        hint: "Deeplink-ссылки имеют ограниченный срок жизни для безопасности.",
+      },
+      notfound: {
+        icon: "🔍",
+        code: "404 Not Found",
+        title: "Ссылка не найдена",
+        message: "Такой deeplink не существует. Возможно, ссылка была удалена или введена с ошибкой.",
+        hint: "Проверьте правильность ссылки и попробуйте снова.",
+      },
+      disabled: {
+        icon: "🚫",
+        code: "410 Gone",
+        title: "Ссылка деактивирована",
+        message: "Эта ссылка была деактивирована администратором и больше не работает.",
+        hint: "Обратитесь к отправителю для получения новой ссылки.",
+      },
+    };
+
+    const err = errors[type] || errors.notfound;
+    document.getElementById("icon").textContent = err.icon;
+    document.getElementById("error-code").textContent = err.code;
+    document.getElementById("title").textContent = err.title;
+    document.getElementById("message").textContent = err.message;
+    document.getElementById("hint").textContent = err.hint;
+    document.title = `${err.title} — DeepLink`;
+  </script>
+</body>
+</html>
