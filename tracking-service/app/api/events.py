@@ -1,4 +1,5 @@
 import uuid
+import json
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -24,10 +25,11 @@ class TrackEventRequest(BaseModel):
 async def track_event(data: TrackEventRequest, db: AsyncSession = Depends(get_db)):
     event_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
+    metadata = json.dumps({"requestId": data.requestId})
 
     await db.execute(text("""
         INSERT INTO deeplink_events (id, deeplink_id, event_type, created_at, ip, user_agent, metadata)
-        VALUES (:id, :deeplink_id, :event_type, :created_at, :ip, :user_agent, :metadata::jsonb)
+        VALUES (:id, :deeplink_id, :event_type, :created_at, :ip, :user_agent, CAST(:metadata AS jsonb))
     """), {
         "id": event_id,
         "deeplink_id": data.deeplinkId,
@@ -35,7 +37,7 @@ async def track_event(data: TrackEventRequest, db: AsyncSession = Depends(get_db
         "created_at": now,
         "ip": data.ip,
         "user_agent": data.userAgent,
-        "metadata": f'{{"requestId": "{data.requestId}"}}',
+        "metadata": metadata,
     })
 
     await db.execute(text("""
