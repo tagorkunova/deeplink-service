@@ -26,9 +26,10 @@
     button.secondary:hover { background: #e5e7eb; }
     button.danger { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; }
     button.danger:hover { background: #fecaca; }
-    .links-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    .links-table th { text-align: left; padding: 10px 12px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-    .links-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+    .table-wrapper { overflow-x: auto; }
+    .links-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 750px; }
+    .links-table th { text-align: left; padding: 10px 8px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+    .links-table td { padding: 10px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
     .links-table tr:last-child td { border-bottom: none; }
     .status { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
     .status.active { background: #dcfce7; color: #166534; }
@@ -36,8 +37,8 @@
     .status.disabled { background: #f3f4f6; color: #6b7280; }
     .short-url { font-family: monospace; color: #4f46e5; text-decoration: none; font-size: 13px; }
     .short-url:hover { text-decoration: underline; }
-    .payload-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; color: #6b7280; }
-    .actions { display: flex; gap: 6px; }
+    .payload-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; color: #6b7280; }
+    .actions { display: flex; gap: 6px; white-space: nowrap; }
     .empty { text-align: center; padding: 2rem; color: #9ca3af; }
     .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #1a1a2e; color: white; padding: 12px 20px; border-radius: 10px; font-size: 14px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 100; }
     .toast.show { opacity: 1; }
@@ -79,8 +80,10 @@
 
     <div class="card">
       <h2>Созданные ссылки</h2>
-      <div id="links-container">
-        <div class="empty">Загрузка...</div>
+      <div class="table-wrapper">
+        <div id="links-container">
+          <div class="empty">Загрузка...</div>
+        </div>
       </div>
     </div>
   </main>
