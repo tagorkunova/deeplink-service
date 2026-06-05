@@ -55,9 +55,11 @@ async def test_full_deeplink_lifecycle():
         response = await client.delete(f"/api/deeplinks/{deeplink_id}")
         assert response.status_code == 204
 
-        # 7. Переход по деактивированной ссылке — ошибка
+        # 7. Переход по деактивированной ссылке — редирект на error.html
         response = await client.get(f"/d/{code}")
-        assert response.status_code == 410, f"Expected 410 Gone, got {response.status_code}"
+        assert response.status_code == 302, f"Expected 302 redirect, got {response.status_code}"
+        assert "error.html" in response.headers["location"]
+        assert "type=disabled" in response.headers["location"]
 
 
 @pytest.mark.asyncio
@@ -76,9 +78,11 @@ async def test_expired_deeplink():
         # Ждём истечения
         time.sleep(2)
 
-        # Ссылка должна вернуть 410
+        # Ссылка должна редиректить на error.html
         response = await client.get(f"/d/{code}")
-        assert response.status_code == 410, f"Expected 410, got {response.status_code}"
+        assert response.status_code == 302, f"Expected 302 redirect, got {response.status_code}"
+        assert "error.html" in response.headers["location"]
+        assert "type=expired" in response.headers["location"]
 
 
 @pytest.mark.asyncio
@@ -92,10 +96,12 @@ async def test_invalid_url_rejected():
 
 
 @pytest.mark.asyncio
-async def test_nonexistent_deeplink_returns_404():
+async def test_nonexistent_deeplink_returns_redirect():
     async with httpx.AsyncClient(base_url=API_URL, follow_redirects=False) as client:
         response = await client.get("/d/nonexistent000")
-        assert response.status_code == 404
+        assert response.status_code == 302
+        assert "error.html" in response.headers["location"]
+        assert "type=notfound" in response.headers["location"]
 
 
 @pytest.mark.asyncio
