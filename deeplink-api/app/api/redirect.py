@@ -26,18 +26,27 @@ async def open_deeplink(code: str, request: Request, db: AsyncSession = Depends(
     link = await get_deeplink_by_code(db, code)
 
     if not link:
-        return HTMLResponse(content=_error_page("Ссылка не найдена", "Такой deeplink не существует"), status_code=404)
+        return RedirectResponse(url="http://localhost:3000/error.html?type=notfound", status_code=302)
 
     now = datetime.now(timezone.utc)
 
-    if not link.active or link.expires_at < now:
+    if link.expires_at < now:
         logger.info({
             "event": "DEEPLINK_EXPIRED",
             "deeplinkCode": code,
             "deeplinkId": str(link.id),
             "requestId": request_id,
         })
-        return HTMLResponse(content=_error_page("Ссылка истекла", "Срок действия этой ссылки истёк."), status_code=410)
+        return RedirectResponse(url="http://localhost:3000/error.html?type=expired", status_code=302)
+
+    if not link.active:
+        logger.info({
+            "event": "DEEPLINK_DISABLED",
+            "deeplinkCode": code,
+            "deeplinkId": str(link.id),
+            "requestId": request_id,
+        })
+        return RedirectResponse(url="http://localhost:3000/error.html?type=disabled", status_code=302)
 
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
